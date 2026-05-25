@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>채점 사이트</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f3ee;
+    --surface: #ffffff;
+    --surface2: #f0ede6;
+    --border: #e2ddd4;
+    --text: #1a1714;
+    --muted: #7a7469;
+    --accent: #2d5016;
+    --accent-light: #e8f0df;
+    --correct: #1a6b3a;
+    --correct-bg: #e6f5ec;
+    --wrong: #a0230e;
+    --wrong-bg: #fceae7;
+    --warn: #8a6200;
+    --warn-bg: #fff8e1;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  .container { max-width: 720px; margin: 0 auto; }
+
+  header { margin-bottom: 2.5rem; animation: fadeUp 0.5s ease both; }
+  header h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 6px; }
+  header p { font-size: 14px; color: var(--muted); }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.75rem;
+    margin-bottom: 1.25rem;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .card-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 1rem;
+  }
+
+  .name-row { display: flex; gap: 10px; align-items: center; }
+  .name-row label { font-size: 14px; color: var(--muted); white-space: nowrap; }
+
+  input[type="text"] {
+    flex: 1;
+    height: 42px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 0 14px;
+    font-size: 15px;
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  input[type="text"]:focus { border-color: var(--accent); background: white; }
+
+  .q-row {
+    display: grid;
+    grid-template-columns: 80px repeat(5, 1fr);
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .q-row.header-row span {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+  }
+  .q-row.header-row span:first-child { text-align: left; }
+
+  .range-label { font-size: 13px; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+  select {
+    height: 40px;
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+    text-align: center;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+    appearance: none;
+  }
+  select:focus { border-color: var(--accent); background: white; }
+  select:hover { border-color: #b5b0a6; }
+  select.answered { background: var(--accent-light); border-color: #b5ce9a; color: var(--accent); }
+  select.empty-warn { border-color: #d97700 !important; background: #fffbf0 !important; animation: shake 0.35s ease; }
+
+  /* Warning toast */
+  .warn-toast {
+    display: none;
+    background: var(--warn-bg);
+    border: 1.5px solid #f0c040;
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 1.25rem;
+    font-size: 14px;
+    color: var(--warn);
+    animation: fadeUp 0.3s ease both;
+    line-height: 1.6;
+  }
+  .warn-toast strong { font-weight: 700; }
+
+  .btn-row { display: flex; gap: 10px; margin-top: 1.75rem; }
+
+  .btn-grade {
+    flex: 1;
+    height: 48px;
+    background: var(--text);
+    color: var(--bg);
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.15s;
+    letter-spacing: -0.3px;
+  }
+  .btn-grade:hover { opacity: 0.85; }
+  .btn-grade:active { transform: scale(0.98); }
+
+  .btn-reset {
+    height: 48px;
+    padding: 0 22px;
+    background: transparent;
+    color: var(--muted);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    font-size: 14px;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-reset:hover { background: var(--surface2); }
+
+  /* Result */
+  #result-only { display: none; }
+  #form-section { display: block; }
+
+  #result-section { display: none; animation: fadeUp 0.4s ease both; }
+
+  .score-card {
+    background: var(--text);
+    border-radius: 16px;
+    padding: 2rem;
+    color: white;
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .score-card .name-out { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .score-card .label { font-size: 13px; color: rgba(255,255,255,0.55); }
+  .score-display { text-align: right; }
+  .score-display .pts { font-size: 42px; font-weight: 700; font-family: 'DM Mono', monospace; line-height: 1; }
+  .score-display .out-of { font-size: 13px; color: rgba(255,255,255,0.55); margin-top: 4px; }
+
+  /* Grade badge */
+  .grade-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    font-size: 26px;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+    border: 2.5px solid rgba(255,255,255,0.35);
+    margin-top: 6px;
+  }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 1.25rem;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1rem;
+    text-align: center;
+  }
+  .stat-val { font-size: 22px; font-weight: 700; font-family: 'DM Mono', monospace; margin-bottom: 4px; }
+  .stat-val.c { color: var(--correct); }
+  .stat-val.w { color: var(--wrong); }
+  .stat-lbl { font-size: 12px; color: var(--muted); }
+
+  .grade-stat { background: var(--text); border-color: var(--text); }
+  .grade-stat .stat-val { color: white; }
+  .grade-stat .stat-lbl { color: rgba(255,255,255,0.55); }
+
+  .detail-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 1.25rem;
+  }
+
+  .detail-header {
+    display: grid;
+    grid-template-columns: 70px repeat(5, 1fr);
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+  .detail-header span {
+    font-size: 12px;
+    color: var(--muted);
+    padding: 10px 6px;
+    text-align: center;
+    font-family: 'DM Mono', monospace;
+  }
+  .detail-header span:first-child { text-align: left; padding-left: 1.25rem; }
+
+  .detail-row {
+    display: grid;
+    grid-template-columns: 70px repeat(5, 1fr);
+    border-bottom: 1px solid var(--border);
+  }
+  .detail-row:last-child { border-bottom: none; }
+
+  .detail-cell {
+    padding: 12px 6px;
+    text-align: center;
+    font-size: 14px;
+    font-family: 'DM Mono', monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+  .detail-cell.lbl {
+    text-align: left;
+    justify-content: center;
+    align-items: flex-start;
+    padding-left: 1.25rem;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+
+  .cell-o { background: var(--correct-bg); color: var(--correct); font-weight: 700; font-size: 16px; }
+  .cell-x { background: var(--wrong-bg); color: var(--wrong); font-weight: 700; font-size: 16px; }
+  .cell-skip { background: var(--surface2); color: var(--muted); }
+  .cell-ans-hint { font-size: 10px; color: var(--wrong); opacity: 0.8; }
+
+  .re-grade-btn {
+    width: 100%;
+    height: 46px;
+    background: transparent;
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    font-size: 15px;
+    font-family: 'Noto Sans KR', sans-serif;
+    color: var(--muted);
+    cursor: pointer;
+    transition: background 0.15s;
+    margin-top: 0.25rem;
+  }
+  .re-grade-btn:hover { background: var(--surface2); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>📝 채점 사이트</h1>
+    <p>이름을 입력하고 답안을 선택한 뒤 채점 버튼을 눌러주세요. (총 20문항)</p>
+  </header>
+
+  <!-- 입력 폼 -->
+  <div id="form-section">
+    <div class="card" style="animation-delay:0s">
+      <div class="card-title">응시자 정보</div>
+      <div class="name-row">
+        <label>이름</label>
+        <input type="text" id="student-name" placeholder="이름을 입력하세요" />
+      </div>
+    </div>
+
+    <div class="card" style="animation-delay:0.08s">
+      <div class="card-title">답안 입력</div>
+      <div class="q-row header-row">
+        <span></span>
+        <span>1번</span><span>2번</span><span>3번</span><span>4번</span><span>5번</span>
+      </div>
+      <div id="answer-rows"></div>
+    </div>
+
+    <div id="warn-toast" class="warn-toast"></div>
+
+    <div class="btn-row">
+      <button class="btn-grade" onclick="grade()">채점하기 →</button>
+      <button class="btn-reset" onclick="resetAll()">초기화</button>
+    </div>
+  </div>
+
+  <!-- 결과 (새로고침 후 결과만 보이는 경우) -->
+  <div id="result-only">
+    <div id="result-section">
+      <div class="score-card" id="score-card">
+        <div>
+          <div class="name-out" id="res-name">—</div>
+          <div class="label">채점 결과</div>
+        </div>
+        <div class="score-display">
+          <div class="pts" id="res-pts">—</div>
+          <div class="out-of" id="res-sub">점</div>
+        </div>
+        <div class="grade-badge" id="res-grade">—</div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-val c" id="st-correct">—</div>
+          <div class="stat-lbl">정답</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val w" id="st-wrong">—</div>
+          <div class="stat-lbl">오답</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="st-rate">—</div>
+          <div class="stat-lbl">정답률</div>
+        </div>
+        <div class="stat-card grade-stat">
+          <div class="stat-val" id="st-grade">—</div>
+          <div class="stat-lbl">등급</div>
+        </div>
+      </div>
+
+      <div class="detail-card">
+        <div class="detail-header">
+          <span>문항</span>
+          <span>1번</span><span>2번</span><span>3번</span><span>4번</span><span>5번</span>
+        </div>
+        <div id="detail-rows"></div>
+      </div>
+    </div>
+    <button class="re-grade-btn" onclick="reGrade()">↩ 다시 채점하기</button>
+  </div>
+</div>
+
+<script>
+const ANSWERS = [
+  [2,3,1,5,2],
+  [3,1,1,4,4],
+  [5,5,2,2,1],
+  [3,4,5,1,4]
+];
+const TOTAL = 20;
+const STORAGE_KEY = 'grading_result_v1';
+
+function getGrade(correct) {
+  if (correct >= 47) return '1';  // but max is 20 so scale accordingly
+  // Scores are out of 20. Remap grade thresholds.
+  // 1등급: 47/100 → 94/200 — wait, correct is raw count out of 20.
+  // User said: 1등급 47점, 2등급 42점, 3등급 37점 (100점 기준)
+  // Convert: score = correct/20*100
+  const score = Math.round(correct / TOTAL * 100);
+  if (score >= 47) return '1';
+  if (score >= 42) return '2';
+  if (score >= 37) return '3';
+  return '4';
+}
+
+function buildRows(saved) {
+  const container = document.getElementById('answer-rows');
+  container.innerHTML = '';
+  ANSWERS.forEach((row, ri) => {
+    const div = document.createElement('div');
+    div.className = 'q-row';
+    div.innerHTML = `<span class="range-label">${ri*5+1}~${ri*5+5}</span>` +
+      row.map((_, ci) => {
+        const qn = ri*5+ci+1;
+        const savedVal = saved ? saved.answers[qn-1] : '';
+        return `<select id="q${qn}" onchange="onSelect(this)" aria-label="${qn}번 답안">
+          <option value="">-</option>
+          ${[1,2,3,4,5].map(v=>`<option value="${v}"${savedVal==v?' selected':''}>${v}</option>`).join('')}
+        </select>`;
+      }).join('');
+    container.appendChild(div);
+  });
+  // Apply answered class
+  if (saved) {
+    for (let i = 1; i <= TOTAL; i++) {
+      const el = document.getElementById('q'+i);
+      if (el && el.value) el.classList.add('answered');
+    }
+    document.getElementById('student-name').value = saved.name || '';
+  }
+}
+
+function onSelect(el) {
+  el.classList.toggle('answered', el.value !== '');
+  el.classList.remove('empty-warn');
+}
+
+function calcResults(answers) {
+  let correct = 0;
+  const results = [];
+  ANSWERS.forEach((row, ri) => {
+    row.forEach((ans, ci) => {
+      const val = answers[ri*5+ci];
+      const isCorrect = val === ans;
+      if (isCorrect) correct++;
+      results.push({ qn: ri*5+ci+1, val, ans, isCorrect, blank: !val });
+    });
+  });
+  return { correct, results };
+}
+
+function renderResult(name, answers) {
+  const { correct, results } = calcResults(answers);
+  const pct = Math.round(correct / TOTAL * 100);
+  const grade = getGrade(pct);
+
+  document.getElementById('res-name').textContent = name || '응시자';
+  document.getElementById('res-pts').textContent = pct + '점';
+  document.getElementById('res-sub').textContent = `${correct}문항 정답 / 전체 ${TOTAL}문항`;
+  document.getElementById('res-grade').textContent = grade;
+
+  const scoreCard = document.getElementById('score-card');
+  scoreCard.style.background = pct >= 47 ? '#1a3d08' : pct >= 42 ? '#5a3c00' : pct >= 37 ? '#1a3560' : '#5c1009';
+
+  document.getElementById('st-correct').textContent = correct;
+  document.getElementById('st-wrong').textContent = TOTAL - correct;
+  document.getElementById('st-rate').textContent = pct + '%';
+  document.getElementById('st-grade').textContent = grade + '등급';
+
+  let html = '';
+  for (let ri = 0; ri < 4; ri++) {
+    html += `<div class="detail-row"><div class="detail-cell lbl">${ri*5+1}~${ri*5+5}번</div>`;
+    for (let ci = 0; ci < 5; ci++) {
+      const r = results[ri*5+ci];
+      if (r.blank) {
+        html += `<div class="detail-cell cell-skip">-</div>`;
+      } else if (r.isCorrect) {
+        html += `<div class="detail-cell cell-o">○</div>`;
+      } else {
+        html += `<div class="detail-cell cell-x">✕<span class="cell-ans-hint">정답 ${r.ans}</span></div>`;
+      }
+    }
+    html += `</div>`;
+  }
+  document.getElementById('detail-rows').innerHTML = html;
+  document.getElementById('result-section').style.display = 'block';
+}
+
+function grade() {
+  const name = document.getElementById('student-name').value.trim();
+  const answers = [];
+  const blanks = [];
+
+  for (let i = 1; i <= TOTAL; i++) {
+    const val = parseInt(document.getElementById('q'+i).value);
+    answers.push(isNaN(val) ? null : val);
+    if (isNaN(val)) blanks.push(i);
+  }
+
+  // 미입력 경고
+  if (blanks.length > 0) {
+    const toast = document.getElementById('warn-toast');
+    toast.innerHTML = `<strong>⚠ 미입력 문항이 있습니다.</strong><br>${blanks.map(n=>n+'번').join(', ')} 문항의 답안이 선택되지 않았습니다. 빈 문항은 오답으로 처리됩니다.`;
+    toast.style.display = 'block';
+    blanks.forEach(n => {
+      const el = document.getElementById('q'+n);
+      el.classList.add('empty-warn');
+      setTimeout(() => el.classList.remove('empty-warn'), 500);
+    });
+    // 첫 번째 빈 문항으로 스크롤
+    document.getElementById('q'+blanks[0]).scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+
+  document.getElementById('warn-toast').style.display = 'none';
+
+  // localStorage 저장
+  const saveData = { name, answers, ts: Date.now() };
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(saveData)); } catch(e) {}
+
+  renderResult(name, answers);
+
+  // 결과 창만 보이기
+  document.getElementById('form-section').style.display = 'none';
+  document.getElementById('result-only').style.display = 'block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function resetAll() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+  document.getElementById('student-name').value = '';
+  for (let i = 1; i <= TOTAL; i++) {
+    const el = document.getElementById('q'+i);
+    if (el) { el.value = ''; el.classList.remove('answered', 'empty-warn'); }
+  }
+  document.getElementById('warn-toast').style.display = 'none';
+  document.getElementById('result-section').style.display = 'none';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function reGrade() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+  document.getElementById('form-section').style.display = 'block';
+  document.getElementById('result-only').style.display = 'none';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Init
+(function init() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch(e) {}
+
+  buildRows(saved);
+
+  if (saved && saved.answers) {
+    // 이미 채점된 결과 있으면 결과만 보여주기
+    renderResult(saved.name, saved.answers);
+    document.getElementById('form-section').style.display = 'none';
+    document.getElementById('result-only').style.display = 'block';
+  }
+})();
+</script>
+</body>
+</html>
