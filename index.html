@@ -472,7 +472,7 @@ function renderResult(name, answers) {
   document.getElementById('st-correct').textContent = correct;
   document.getElementById('st-wrong').textContent = TOTAL - correct;
   document.getElementById('st-rate').textContent = pct + '%';
-  document.getElementById('st-grade').textContent = grade + '등급';
+  document.getElementById('st-grade').textContent = grade + '등급(현재 오류가 있습니다. 그냥 무시해주세요.)';
 
   let html = '';
   for (let ri = 0; ri < 4; ri++) {
